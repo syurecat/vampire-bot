@@ -57,11 +57,10 @@ def checkExistsGuildUser(session: Session, guild_id: int, user_id: int):
         session.add(guild_user)
     session.commit()
 
-def checkExistsVCSummary(session: Session, id: int, channel_id: int):
-    now_utc = datetime.now(timezone.utc)
-    vc_summary = session.query(VCSummary).filter_by(id=id, channel_id=channel_id, year=now_utc.year, month=now_utc.month).one_or_none()
+def checkExistsVCSummary(session: Session, id: int, channel_id: int, year: int, month: int):
+    vc_summary = session.query(VCSummary).filter_by(id=id, channel_id=channel_id, year=year, month=month).one_or_none()
     if vc_summary is None:
-        vc_summary = VCSummary(id=id, channel_id=channel_id, year=now_utc.year, month=now_utc.month)
+        vc_summary = VCSummary(id=id, channel_id=channel_id, year=year, month=month)
         session.add(vc_summary)
     session.commit()
 
@@ -72,14 +71,23 @@ def addUserCount(session: Session, user_id: int):
     user.command_count += 1
     session.commit()
 
-def readVcSummary(session: Session, guild_id: int, user_id: int, channel_id: int):
+def readVcSummary(session: Session, guild_id: int, user_id: int, channel_id: int, year: int = None, month: int = None):
     checkExistsGuildUser(session, guild_id, user_id)
     now_utc = datetime.now(timezone.utc)
+    year = year or now_utc.year
+    month = month
     guild_user = session.query(GuildUser).filter_by(guild_id=guild_id, user_id=user_id).one()
-    checkExistsVCSummary(session, id=guild_user.id, channel_id=channel_id)
-    vc_summary = session.query(VCSummary).filter_by(id=guild_user.id, channel_id=channel_id, year=now_utc.year, month=now_utc.month).one()
-    connection_time = formatTime(vc_summary.total_connection_time)
-    mic_on_time = formatTime(vc_summary.total_mic_on_time)
+    if month is not None:
+        checkExistsVCSummary(session, id=guild_user.id, channel_id=channel_id, year=year, month=month)
+        vc_summary = session.query(VCSummary).filter_by(id=guild_user.id, channel_id=channel_id, year=year, month=month).one()
+        connection_time = formatTime(vc_summary.total_connection_time)
+        mic_on_time = formatTime(vc_summary.total_mic_on_time)
+    else:
+        vc_summary = session.query(VCSummary).filter_by(id=guild_user.id, channel_id=channel_id, year=year).all()
+        total_connection_time = sum(s.total_connection_time for s in vc_summary)
+        total_mic_on_time = sum(s.total_mic_on_time for s in vc_summary)
+        connection_time = formatTime(total_connection_time)
+        mic_on_time = formatTime(total_mic_on_time)
     return connection_time, mic_on_time
 
 def clearVcSessions(session: Session):
@@ -100,7 +108,7 @@ def endVcSessions(session: Session, guild_id: int, user_id: int, channel_id: int
     end_time = int(time.time())
     now_utc = datetime.now(timezone.utc)
     guild_user = session.query(GuildUser).filter_by(guild_id=guild_id, user_id=user_id).one()
-    checkExistsVCSummary(session, id=guild_user.id, channel_id=channel_id)
+    checkExistsVCSummary(session, id=guild_user.id, channel_id=channel_id, year=year, month=month)
     vc_session = session.query(VCSession).filter_by(id=guild_user.id, channel_id=channel_id).one_or_none()
     if vc_session is None:
         elapsed_time = end_time - startup_time

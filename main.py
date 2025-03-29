@@ -7,6 +7,7 @@ import time
 import asyncio
 import logging
 import logging.handlers
+from datetime import datetime
 from database import init_db
 from database.crud import get_session, addUserCount, clearVcSessions, addVcSessions, endVcSessions, readVcSummary
 
@@ -62,10 +63,13 @@ async def ping(interaction: discord.Interaction):
     channel="閲覧するチャンネル",
     ephemeral="自分にしか表示しないかどうかです。defaultでTrueです。"
 )
-async def vcLog(interaction: discord.Interaction, channel: discord.VoiceChannel, ephemeral: bool=True):
+async def vcLog(interaction: discord.Interaction, channel: discord.VoiceChannel,year: app_commands.Range[int, 2025, 2099] = None, month: app_commands.Range[int, 1, 12] = None, ephemeral: bool=True):
     with get_session() as session:
-        connection_time, mic_on_time  = readVcSummary(session, interaction.guild.id, interaction.user.id, channel.id)
-    await interaction.response.send_message(f"今月 {channel.name} に接続していた時間の発表です！\n接続時間: {connection_time}\nミュート: {mic_on_time}", ephemeral=ephemeral)
+        connection_time, mic_on_time  = readVcSummary(session, interaction.guild.id, interaction.user.id, channel.id, year, month)
+    if year is not None and month is None:
+        await interaction.response.send_message(f"{year or datetime.now().year}年に {channel.name} に接続していた時間の発表です！\n接続時間: {connection_time}\nミュート: {mic_on_time}", ephemeral=ephemeral)
+    else:
+        await interaction.response.send_message(f"{year or datetime.now().year}年 {month or datetime.now().month}月に {channel.name} に接続していた時間の発表です！\n接続時間: {connection_time}\nミュート: {mic_on_time}", ephemeral=ephemeral)
 
 @tree.command(
     name = 'rps',
