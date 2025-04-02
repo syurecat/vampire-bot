@@ -9,7 +9,7 @@ import logging
 import logging.handlers
 from datetime import datetime
 from database import init_db
-from database.crud import get_session, addUserCount, clearVcSessions, addVcSessions, endVcSessions, readVcSummary
+from database.crud import get_session, addUserCount, clearVcSessions, addVcSessions, endVcSessions, readVcSummary, updateServerNotificationChannel, readServerSetting
 
 init_db()
 load_dotenv()
@@ -19,6 +19,7 @@ CHANNEL_ID = int(os.environ["CHANNEL_ID"])
 GUILD_ID = int(os.environ["GUILD_ID"])
 startup_time = int(time.time())
 
+# logging setting
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
 logging.getLogger('discord.http').setLevel(logging.INFO)
@@ -33,10 +34,13 @@ formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', 
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+# Discord
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
+# Command Group
+serverSettings = app_commands.Group(name="server-settings", description="サーバー設定", default_permissions=discord.Permissions(manage_guild=True))
 
 @client.event
 async def on_ready():
@@ -54,6 +58,19 @@ async def ping(interaction: discord.Interaction):
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     await interaction.response.send_message("pong!")
+
+@serverSettings.command(
+        name = 'notification-channel',
+        description = 'botの通知チャンネルを変更します。'
+)
+@app_commands.describe(
+    channel="通知するチャンネル"
+)
+async def notificationChannel(interaction: discord.Integration, channel: discord.TextChannel):
+    with get_session() as session:
+        updateServerNotificationChannel(session, interaction.guild.id, channel.id)
+    await interaction.response.send_message(f"通知チャンネルを <#{channel.id}> に設定しました！")
+
 
 @tree.command(
         name= 'vc-time',
@@ -205,9 +222,11 @@ async def on_voice_state_update(member, before, after):
     msg = None
     
     logger.debug(f"Event triggered: {member.display_name}, Before: {before.channel}, After: {after.channel}")
-    alert_channel = client.get_channel(CHANNEL_ID)
+    with get_session() as session:
+        alert_channel_id = readServerSetting(session, member.guild.id).notification_channel
+    alert_channel = client.get_channel(alert_channel_id)
     if alert_channel is None:
-        logger.error(f"Alert channel with ID {CHANNEL_ID} not found or no access.")
+        logger.error(f"Alert channel with ID {alert_channel_id} not found or no access.")
         return
 
     if before.channel is None and after.channel is not None:
@@ -240,5 +259,6 @@ async def on_voice_state_update(member, before, after):
     else:
         logger.debug("nope")
 
+tree.add_command(serverSettings)
 # log_level=logging.DEBUG
 client.run(DISCORD_TOKEN)

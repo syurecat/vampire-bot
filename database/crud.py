@@ -64,10 +64,21 @@ def checkExistsVCSummary(session: Session, id: int, channel_id: int, year: int, 
         session.add(vc_summary)
     session.commit()
 
+def updateServerNotificationChannel(session: Session, guild_id: int, notificationChannel_id: int):
+    checkExistsGuild(session, guild_id)
+    guild = session.query(Guild).filter_by(guild_id=guild_id).one()
+    guild.notification_channel = notificationChannel_id
+    session.commit()
+
+def readServerSetting(session: Session, guild_id: int):
+    checkExistsGuild(session, guild_id)
+    guild = session.query(Guild).filter_by(guild_id=guild_id).one()
+    return guild
+
 def addUserCount(session: Session, user_id: int):
     checkExistsUser(session, user_id)
     session.commit()
-    user = session.query(User).filter_by(user_id=user_id).one_or_none()
+    user = session.query(User).filter_by(user_id=user_id).one()
     user.command_count += 1
     session.commit()
 
@@ -108,7 +119,7 @@ def endVcSessions(session: Session, guild_id: int, user_id: int, channel_id: int
     end_time = int(time.time())
     now_utc = datetime.now(timezone.utc)
     guild_user = session.query(GuildUser).filter_by(guild_id=guild_id, user_id=user_id).one()
-    checkExistsVCSummary(session, id=guild_user.id, channel_id=channel_id, year=year, month=month)
+    checkExistsVCSummary(session, id=guild_user.id, channel_id=channel_id, year=now_utc.year, month=now_utc.month)
     vc_session = session.query(VCSession).filter_by(id=guild_user.id, channel_id=channel_id).one_or_none()
     if vc_session is None:
         elapsed_time = end_time - startup_time
