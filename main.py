@@ -20,9 +20,6 @@ GUILD_ID = int(os.environ["GUILD_ID"])
 startup_time = int(time.time())
 
 # logging setting
-logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
-logging.getLogger('discord.http').setLevel(logging.INFO)
 handler = logging.handlers.RotatingFileHandler(
     filename='discord.log',
     encoding='utf-8',
@@ -32,7 +29,29 @@ handler = logging.handlers.RotatingFileHandler(
 dt_fmt = '%Y-%m-%d %H:%M:%S'
 formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', dt_fmt, style='{')
 handler.setFormatter(formatter)
+
+# main log setting
+logger = logging.getLogger('vampire')
+logger.setLevel(logging.DEBUG)
 logger.addHandler(handler)
+
+# Discord log setting
+discord_logger = logging.getLogger('discord')
+discord_logger.setLevel(logging.DEBUG)
+discord_logger.addHandler(handler)
+
+discord_http_logger = logging.getLogger('discord.http')
+discord_http_logger.setLevel(logging.INFO)
+discord_http_logger.addHandler(handler)
+
+# SQLAlchemy log setting
+sqlalchemy_logger = logging.getLogger('sqlalchemy')
+sqlalchemy_logger.setLevel(logging.WARNING)
+sqlalchemy_logger.addHandler(handler)
+
+engine_logger = logging.getLogger('sqlalchemy.engine')
+engine_logger.setLevel(logging.WARNING)
+engine_logger.addHandler(handler)
 
 # Discord
 intents = discord.Intents.default()

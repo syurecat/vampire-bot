@@ -6,7 +6,7 @@ import time
 from datetime import datetime, timezone
 from contextlib import contextmanager
 
-logger = logging.getLogger('discord')
+logger = logging.getLogger('vampire')
 
 @contextmanager
 def get_session():
