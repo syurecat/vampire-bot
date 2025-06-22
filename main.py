@@ -9,7 +9,7 @@ import logging
 import logging.handlers
 from datetime import datetime
 from database import init_db
-from database.crud import get_session, addUserCount, clearVcSessions, addVcSessions, endVcSessions, readVcSummary, updateServerNotificationChannel, readServerSetting
+from database.crud import get_session, addUserCount, clearVcSessions, addVcSessions, endVcSessions, readVcSummary, updateServerNotificationChannel, readServerSetting, FutureDateError
 
 init_db()
 load_dotenv()
@@ -81,8 +81,12 @@ async def notificationChannel(interaction: discord.Integration, channel: discord
     ephemeral="自分にしか表示しないかどうかです。defaultでTrueです。"
 )
 async def vcLog(interaction: discord.Interaction, channel: discord.VoiceChannel,year: app_commands.Range[int, 2025, 2099] = None, month: app_commands.Range[int, 1, 12] = None, ephemeral: bool=True):
-    with get_session() as session:
-        connection_time, mic_on_time  = readVcSummary(session, interaction.guild.id, interaction.user.id, channel.id, year, month)
+    try:
+        with get_session() as session:
+            connection_time, mic_on_time  = readVcSummary(session, interaction.guild.id, interaction.user.id, channel.id, year, month)
+    except FutureDateError:
+        await interaction.response.send_message(f"ごめんね～\n私、未来のことはわかんないんだよね......\nその時まで一緒にいれると嬉しいな！", ephemeral=True)
+        return
     if year is not None and month is None:
         await interaction.response.send_message(f"{year or datetime.now().year}年に {channel.name} に接続していた時間の発表です！\n接続時間: {connection_time}\nミュート: {mic_on_time}", ephemeral=ephemeral)
     else:
@@ -260,5 +264,5 @@ async def on_voice_state_update(member, before, after):
         logger.debug("nope")
 
 tree.add_command(serverSettings)
-# log_level=logging.DEBUG
+log_level=logging.DEBUG
 client.run(DISCORD_TOKEN)

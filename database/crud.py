@@ -13,11 +13,15 @@ def get_session():
     session = SessionLocal()
     try:
         yield session
+    except FutureDateError:
+        raise
     except Exception as e:
         session.rollback()
         logger.error(f"datebase error: {e}")
+        raise
     finally:
         session.close()
+
 
 class FormatTime:
     def __init__(self, hour, minute, second):
@@ -27,11 +31,13 @@ class FormatTime:
     def __str__(self):
         return f'{self.hour:03d}時間 {self.minute:02d}分 {self.second:02d}秒'
 
+
 def formatTime(seconds: int):
     hour = seconds // 3600
     minute = (seconds % 3600) // 60
     second = seconds % 60
     return FormatTime(hour, minute, second)
+
 
 def checkExistsGuild(session: Session, guild_id: int):
     guild = session.query(Guild).filter_by(guild_id=guild_id).one_or_none()
@@ -40,12 +46,14 @@ def checkExistsGuild(session: Session, guild_id: int):
         session.add(guild)
     session.commit()
 
+
 def checkExistsUser(session: Session, user_id: int):
     user = session.query(User).filter_by(user_id=user_id).one_or_none()
     if user is None:
         user = User(user_id=user_id)
         session.add(user)
     session.commit()
+
 
 def checkExistsGuildUser(session: Session, guild_id: int, user_id: int):
     checkExistsGuild(session, guild_id)
@@ -57,6 +65,7 @@ def checkExistsGuildUser(session: Session, guild_id: int, user_id: int):
         session.add(guild_user)
     session.commit()
 
+
 def checkExistsVCSummary(session: Session, id: int, channel_id: int, year: int, month: int):
     vc_summary = session.query(VCSummary).filter_by(id=id, channel_id=channel_id, year=year, month=month).one_or_none()
     if vc_summary is None:
@@ -64,16 +73,19 @@ def checkExistsVCSummary(session: Session, id: int, channel_id: int, year: int, 
         session.add(vc_summary)
     session.commit()
 
+
 def updateServerNotificationChannel(session: Session, guild_id: int, notificationChannel_id: int):
     checkExistsGuild(session, guild_id)
     guild = session.query(Guild).filter_by(guild_id=guild_id).one()
     guild.notification_channel = notificationChannel_id
     session.commit()
 
+
 def readServerSetting(session: Session, guild_id: int):
     checkExistsGuild(session, guild_id)
     guild = session.query(Guild).filter_by(guild_id=guild_id).one()
     return guild
+
 
 def addUserCount(session: Session, user_id: int):
     checkExistsUser(session, user_id)
@@ -82,9 +94,16 @@ def addUserCount(session: Session, user_id: int):
     user.command_count += 1
     session.commit()
 
+
+class FutureDateError(ValueError):
+    pass
+
 def readVcSummary(session: Session, guild_id: int, user_id: int, channel_id: int, year: int = None, month: int = None):
     checkExistsGuildUser(session, guild_id, user_id)
     now_utc = datetime.now(timezone.utc)
+    if (year or now_utc.year, month or 1) > (now_utc.year, now_utc.month):
+        raise FutureDateError("指定された年月は未来です")
+
     guild_user = session.query(GuildUser).filter_by(guild_id=guild_id, user_id=user_id).one()
     if month is None and year is not None:
         vc_summary = session.query(VCSummary).filter_by(id=guild_user.id, channel_id=channel_id, year=year).all()
@@ -101,10 +120,12 @@ def readVcSummary(session: Session, guild_id: int, user_id: int, channel_id: int
         mic_on_time = formatTime(vc_summary.total_mic_on_time)
     return connection_time, mic_on_time
 
+
 def clearVcSessions(session: Session):
     session.query(VCSession).delete()
     session.commit()
     logger.info("cleared vc_sessions table")
+
 
 def addVcSessions(session: Session, guild_id: int, user_id: int, channel_id: int, mic_on: bool):
     checkExistsGuildUser(session, guild_id, user_id)
@@ -113,6 +134,7 @@ def addVcSessions(session: Session, guild_id: int, user_id: int, channel_id: int
     vc_session = VCSession(id=guild_user.id, channel_id=channel_id, event_time=event_time, mic_on=mic_on)
     session.add(vc_session)
     session.commit()
+
 
 def endVcSessions(session: Session, guild_id: int, user_id: int, channel_id: int, mic_on: bool, startup_time: int):
     checkExistsGuildUser(session, guild_id, user_id)
