@@ -7,6 +7,7 @@ import time
 import asyncio
 import logging
 import logging.handlers
+from rich.logging import RichHandler
 from datetime import datetime
 from database import init_db
 from database.crud import get_session, addUserCount, clearVcSessions, addVcSessions, endVcSessions, readVcSummary, updateServerNotificationChannel, readServerSetting, FutureDateError
@@ -16,42 +17,57 @@ load_dotenv()
 
 DISCORD_TOKEN = os.environ["DISCORD_TOKEN"]
 CHANNEL_ID = int(os.environ["CHANNEL_ID"])
-GUILD_ID = int(os.environ["GUILD_ID"])
+LEVEL_NAME = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_LEVEL = getattr(logging, LEVEL_NAME, logging.INFO)
+ADVANCED_LEVEL_NAME = os.getenv("ADVANCED_LOG_LEVEL", "WARNING").upper()
+ADVANCED_LOG_LEVEL = getattr(logging, ADVANCED_LEVEL_NAME, logging.INFO)
 startup_time = int(time.time())
 
+# logging setting reset
+root = logging.getLogger()
+root.setLevel(LOG_LEVEL)
+root.handlers.clear()
+
 # logging setting
-handler = logging.handlers.RotatingFileHandler(
+LOG_FMT  = '[%(asctime)s.%(msecs)03d] [%(levelname)-8s] %(name)s: %(message)s'
+DATE_FMT = '%Y-%m-%d %H:%M:%S'
+
+# console
+console_handler = RichHandler(
+    show_time=False,
+    show_path=False,
+    markup=True,
+    rich_tracebacks=True
+)
+console_handler.setFormatter(logging.Formatter(LOG_FMT, DATE_FMT))
+root.addHandler(console_handler)
+
+# log file
+file_handler = logging.handlers.RotatingFileHandler(
     filename='discord.log',
     encoding='utf-8',
     maxBytes=32 * 1024 * 1024,
     backupCount=7,
 )
-dt_fmt = '%Y-%m-%d %H:%M:%S'
-formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', dt_fmt, style='{')
-handler.setFormatter(formatter)
-
-# main log setting
-logger = logging.getLogger('vampire')
-logger.setLevel(logging.DEBUG)
-logger.addHandler(handler)
+file_handler.setFormatter(logging.Formatter(LOG_FMT, DATE_FMT))
+root.addHandler(file_handler)  
 
 # Discord log setting
 discord_logger = logging.getLogger('discord')
-discord_logger.setLevel(logging.DEBUG)
-discord_logger.addHandler(handler)
-
-discord_http_logger = logging.getLogger('discord.http')
-discord_http_logger.setLevel(logging.INFO)
-discord_http_logger.addHandler(handler)
+discord_logger.setLevel(LOG_LEVEL)
 
 # SQLAlchemy log setting
 sqlalchemy_logger = logging.getLogger('sqlalchemy')
-sqlalchemy_logger.setLevel(logging.WARNING)
-sqlalchemy_logger.addHandler(handler)
+sqlalchemy_logger.setLevel(LOG_LEVEL)
 
-engine_logger = logging.getLogger('sqlalchemy.engine')
-engine_logger.setLevel(logging.WARNING)
-engine_logger.addHandler(handler)
+logging.getLogger('discord.http').setLevel(ADVANCED_LOG_LEVEL)
+logging.getLogger('discord.gateway').setLevel(ADVANCED_LOG_LEVEL)
+logging.getLogger('sqlalchemy.engine').setLevel(LOG_LEVEL)
+logging.getLogger('sqlalchemy.orm').setLevel(ADVANCED_LOG_LEVEL)
+logging.getLogger('sqlalchemy.pool').setLevel(ADVANCED_LOG_LEVEL)
+
+logger = logging.getLogger('vampire')
+logger.setLevel(LOG_LEVEL)
 
 # Discord
 intents = discord.Intents.default()
@@ -277,11 +293,11 @@ async def on_voice_state_update(member, before, after):
                     addVcSessions(session, member.guild.id, member.id, after.channel.id, after.self_mute)
 
     if msg is not None:
-        logger.debug(f'Send message: {msg}')
+        logger.info(f'Send message: {msg}')
         await alert_channel.send(msg)
     else:
         logger.debug("nope")
 
 tree.add_command(serverSettings)
-log_level=logging.DEBUG
-client.run(DISCORD_TOKEN)
+# log_level=logging.DEBUG
+client.run(DISCORD_TOKEN, log_handler=None)

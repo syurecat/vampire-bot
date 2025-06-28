@@ -4,7 +4,7 @@ from .models import Base
 
 DATABASE_URL = "sqlite:///vampire.db"
 
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=False)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():

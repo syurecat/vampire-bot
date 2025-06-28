@@ -6,11 +6,12 @@ import time
 from datetime import datetime, timezone
 from contextlib import contextmanager
 
-logger = logging.getLogger('vampire')
+logger = logging.getLogger('vampire.database')
 
 @contextmanager
 def get_session():
     session = SessionLocal()
+    logger.debug("Opened new database session")
     try:
         yield session
     except FutureDateError:
@@ -21,6 +22,7 @@ def get_session():
         raise
     finally:
         session.close()
+        logger.debug("Closed database session")
 
 
 class FormatTime:
@@ -44,7 +46,9 @@ def checkExistsGuild(session: Session, guild_id: int):
     if guild is None:
         guild = Guild(guild_id=guild_id)
         session.add(guild)
-    session.commit()
+        logger.info(f"Guild created with guild_id={guild_id}")
+    else:
+        logger.debug(f"Guild already exists with guild_id={guild_id}")
 
 
 def checkExistsUser(session: Session, user_id: int):
@@ -52,7 +56,9 @@ def checkExistsUser(session: Session, user_id: int):
     if user is None:
         user = User(user_id=user_id)
         session.add(user)
-    session.commit()
+        logger.info(f"User created with user_id={user_id}")
+    else:
+        logger.debug(f"User already exists with user_id={user_id}")
 
 
 def checkExistsGuildUser(session: Session, guild_id: int, user_id: int):
@@ -63,7 +69,9 @@ def checkExistsGuildUser(session: Session, guild_id: int, user_id: int):
         join_date = int(time.time())
         guild_user = GuildUser(guild_id=guild_id, user_id=user_id, join_date=join_date)
         session.add(guild_user)
-    session.commit()
+        logger.info(f"Guild user created with guild_user={guild_user}")
+    else:
+        logger.debug(f"Guild user already exists with guild_user={guild_user}")
 
 
 def checkExistsVCSummary(session: Session, id: int, channel_id: int, year: int, month: int):
@@ -71,6 +79,9 @@ def checkExistsVCSummary(session: Session, id: int, channel_id: int, year: int, 
     if vc_summary is None:
         vc_summary = VCSummary(id=id, channel_id=channel_id, year=year, month=month)
         session.add(vc_summary)
+        logger.info(f"VCSummary created with vc_summary={vc_summary}")
+    else:
+        logger.debug(f"VCSummary already exists with vc_summary={vc_summary}")
     session.commit()
 
 
@@ -78,12 +89,14 @@ def updateServerNotificationChannel(session: Session, guild_id: int, notificatio
     checkExistsGuild(session, guild_id)
     guild = session.query(Guild).filter_by(guild_id=guild_id).one()
     guild.notification_channel = notificationChannel_id
+    logger.info(f"Updated notification channel to {notificationChannel_id} for guild_id={guild_id}")
     session.commit()
 
 
 def readServerSetting(session: Session, guild_id: int):
     checkExistsGuild(session, guild_id)
     guild = session.query(Guild).filter_by(guild_id=guild_id).one()
+    logger.debug(f"Read server setting for guild_id={guild_id}")
     return guild
 
 
@@ -92,6 +105,7 @@ def addUserCount(session: Session, user_id: int):
     session.commit()
     user = session.query(User).filter_by(user_id=user_id).one()
     user.command_count += 1
+    logger.debug(f"Updated command count for user_id={user_id} to {user.command_count}")
     session.commit()
 
 
@@ -102,6 +116,7 @@ def readVcSummary(session: Session, guild_id: int, user_id: int, channel_id: int
     checkExistsGuildUser(session, guild_id, user_id)
     now_utc = datetime.now(timezone.utc)
     if (year or now_utc.year, month or 1) > (now_utc.year, now_utc.month):
+        logger.warning(f"Input error: The year and month are in the future.")
         raise FutureDateError("指定された年月は未来です")
 
     guild_user = session.query(GuildUser).filter_by(guild_id=guild_id, user_id=user_id).one()
@@ -118,13 +133,14 @@ def readVcSummary(session: Session, guild_id: int, user_id: int, channel_id: int
         vc_summary = session.query(VCSummary).filter_by(id=guild_user.id, channel_id=channel_id, year=year, month=month).one()
         connection_time = formatTime(vc_summary.total_connection_time)
         mic_on_time = formatTime(vc_summary.total_mic_on_time)
+    logger.debug(f"VC Summary: connection_time={connection_time}, mic_on_time={mic_on_time}")
     return connection_time, mic_on_time
 
 
 def clearVcSessions(session: Session):
     session.query(VCSession).delete()
-    session.commit()
     logger.info("cleared vc_sessions table")
+    session.commit()
 
 
 def addVcSessions(session: Session, guild_id: int, user_id: int, channel_id: int, mic_on: bool):
@@ -134,9 +150,11 @@ def addVcSessions(session: Session, guild_id: int, user_id: int, channel_id: int
     vc_session = VCSession(id=guild_user.id, channel_id=channel_id, event_time=event_time, mic_on=mic_on)
     session.add(vc_session)
     session.commit()
+    logger.debug(f"Added VCSession: user_id={user_id}, guild_id={guild_id}, channel_id={channel_id}, mic_on={mic_on}")
 
 
 def endVcSessions(session: Session, guild_id: int, user_id: int, channel_id: int, mic_on: bool, startup_time: int):
+    logger.debug(f"Ending VC session for user_id={user_id}, guild_id={guild_id}, channel_id={channel_id}, mic_on={mic_on}")
     checkExistsGuildUser(session, guild_id, user_id)
     end_time = int(time.time())
     now_utc = datetime.now(timezone.utc)
