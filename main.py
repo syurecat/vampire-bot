@@ -29,17 +29,16 @@ root.setLevel(LOG_LEVEL)
 root.handlers.clear()
 
 # logging setting
-LOG_FMT  = '[%(asctime)s.%(msecs)03d] [%(levelname)-8s] %(name)s: %(message)s'
+LOG_CONSOLE_FMT = ' %(name)s: %(message)s'
+LOG_FILE_FMT  = '[%(asctime)s.%(msecs)03d] [%(levelname)-8s] %(name)s: %(message)s'
 DATE_FMT = '%Y-%m-%d %H:%M:%S'
 
 # console
 console_handler = RichHandler(
-    show_time=False,
-    show_path=False,
     markup=True,
     rich_tracebacks=True
 )
-console_handler.setFormatter(logging.Formatter(LOG_FMT, DATE_FMT))
+console_handler.setFormatter(logging.Formatter(LOG_CONSOLE_FMT, DATE_FMT))
 root.addHandler(console_handler)
 
 # log file
@@ -49,7 +48,7 @@ file_handler = logging.handlers.RotatingFileHandler(
     maxBytes=32 * 1024 * 1024,
     backupCount=7,
 )
-file_handler.setFormatter(logging.Formatter(LOG_FMT, DATE_FMT))
+file_handler.setFormatter(logging.Formatter(LOG_FILE_FMT, DATE_FMT))
 root.addHandler(file_handler)  
 
 # Discord log setting
@@ -62,7 +61,7 @@ sqlalchemy_logger.setLevel(LOG_LEVEL)
 
 logging.getLogger('discord.http').setLevel(ADVANCED_LOG_LEVEL)
 logging.getLogger('discord.gateway').setLevel(ADVANCED_LOG_LEVEL)
-logging.getLogger('sqlalchemy.engine').setLevel(LOG_LEVEL)
+logging.getLogger('sqlalchemy.engine').setLevel(ADVANCED_LOG_LEVEL)
 logging.getLogger('sqlalchemy.orm').setLevel(ADVANCED_LOG_LEVEL)
 logging.getLogger('sqlalchemy.pool').setLevel(ADVANCED_LOG_LEVEL)
 
