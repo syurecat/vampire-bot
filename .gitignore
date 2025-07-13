@@ -1,5 +1,7 @@
 .env
-discord.log
+*.log
 *.db
 database/__pycache__/
 *.pyc
+*.sqlite3
+.vscode/
