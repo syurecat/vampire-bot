@@ -8,6 +8,7 @@ import asyncio
 import logging
 import logging.handlers
 from rich.logging import RichHandler
+from message_loader import MESSAGES
 from datetime import datetime
 from database import init_db
 from database.crud import get_session, addUserCount, clearVcSessions, addVcSessions, endVcSessions, readVcSummary, updateServerNotificationChannel, readServerSetting, FutureDateError
@@ -17,6 +18,7 @@ load_dotenv()
 
 DISCORD_TOKEN = os.environ["DISCORD_TOKEN"]
 CHANNEL_ID = int(os.environ["CHANNEL_ID"])
+LANG = os.getenv("BOT_LANG", "ja")
 LEVEL_NAME = os.getenv("LOG_LEVEL", "INFO").upper()
 LOG_LEVEL = getattr(logging, LEVEL_NAME, logging.INFO)
 ADVANCED_LEVEL_NAME = os.getenv("ADVANCED_LOG_LEVEL", "WARNING").upper()
@@ -86,7 +88,7 @@ async def on_ready():
 
 @tree.command(
     name = 'ping',
-    description = 'pingを返します'
+    description = MESSAGES["commands"]["ping"]["description"]
 )
 async def ping(interaction: discord.Interaction):
     with get_session() as session:

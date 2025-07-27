@@ -1,0 +1,89 @@
+ja:
+  commands:
+    ping:
+      description: "pingを返します"
+      response:
+        pong: "pong!"
+
+    notification-channel:
+      description: "botの通知チャンネルを変更します。"
+      options:
+        channel: "通知するチャンネル"
+      response:
+        success: "通知チャンネルを <#{channel_id}> に設定しました！"
+
+    vc-time:
+      description: "あなたのvc接続時間を表示します。"
+      options:
+        channel: "閲覧するチャンネル"
+        ephemeral: "自分にしか表示しないかどうかです。defaultでTrueです。"
+        year: "閲覧する年"
+        month: "閲覧する月"
+      response:
+        future_error: |
+          ごめんね～
+          私、未来のことはわかんないんだよね......
+          その時まで一緒にいれると嬉しいな！
+        report_year_only: |
+          {year}年に {channel} に接続していた時間の発表です！
+          接続時間: {connection_time}
+          ミュート: {mic_on_time}
+        report_year_month: |
+          {year}年 {month}月に {channel} に接続していた時間の発表です！
+          接続時間: {connection_time}
+          ミュート: {mic_on_time}
+
+    rps:
+      description: "じゃんけんをします。"
+      response:
+        finger_crossed: ":hand_with_index_finger_and_thumb_crossed:"
+        faces: ["✊", "✌️", "🖐️"]
+
+    rps-me:
+      description: "私とじゃんけんをしよう！"
+      response:
+        sleeping: "zzz..."
+        prompt: "じゃんけん..."
+        results:
+          tie: "あいこでしょ！"
+          finger_crossed: "えへへっ"
+          lose: "あれれ?まけちゃった......"
+          win: "私の勝ち！"
+        match_result_format: |
+          わたし: {bot_choice} vs {player_choice} :あなた
+          {result}"
+
+    dice:
+      description: "サイコロを振ります"
+      options:
+        roll: "サイコロを振る回数です"
+        side: "サイコロの面の数です"
+      response:
+        no_option: "必要なオプションがが指定されていません。"
+        invalid_value: "オプションは0以上の整数だよ!"
+        too_large: |
+          オプションは16777216以下の整数だよ!大きい数字は無理なんだ......ごめんね？
+          後で大きい数字対応のコマンドも作るよ!がんばるね!
+        error: |
+          わかんないよぅ；；
+          bot管理者まで連絡ください。
+
+    chinchiro:
+      description: "チンチロを振ります"
+      response:
+        fall: "台からサイコロが落ちた！"
+
+    dice-poker:
+      description: "一般的なダイスポーカーを振ります"
+      response:
+        faces: ["9", "10", "J", "Q", "K", "A"]
+
+    dice-poker-stgr:
+      description: "ストグラのカジノで行われているダイスポーカーを振ります"
+
+  event:
+    voice-state:
+      join: "{member} が {channel} に参加しました。"
+      leave: "{member} が {channel} から退出しました。"
+      move: "{member} が {before_channel} から {after_channel} に移動しました。"
+
