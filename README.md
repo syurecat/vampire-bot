@@ -12,11 +12,23 @@
 ### botの準備
 [こちら](https://discordpy.readthedocs.io/ja/stable/discord.html) を参考にdiscordbotを用意してください。その際、適切な権限設定を行ってください。
 ### 環境変数設定
-`.env` ファイルをプロジェクトルートに配置して、以下の値を設定してください：
+#### botのtokenについて
+`DISCORD_TOKEN`に上記で取得したbotのtokenを設定してください。
+#### loggingの設定について
+環境変数でログレベルを柔軟に変更できるよう設計しています。
+|環境変数名|説明|デフォルト値|
+| --- | --- | --: |
+| `CONSOLE_LOG_LEVEL` | コンソール出力のログレベル | `INFO` |
+| `FILE_LOG_LEVEL` | ログファイル出力のログレベル (discord.log に出力) | `DEBUG` |
+| `LOG_LEVEL` | discord全体, sqlalchemy全体, vampire全体 への基本ログレベル | `DEBUG` |
+| `ADVANCED_LOG_LEVEL` | discord.http / discord.gateway / sqlalchemy.engine など詳細部分のレベル | `WARNING` |
+#### 設定例
 ```env
 DISCORD_TOKEN=YOUR_DISCORD_BOT_TOKEN
 CHANNEL_ID=DEFAULT_CHANNEL_ID
-LOG_LEVEL=INFO
+CONSOLE_LOG_LEVEL=INFO
+FILE_LOG_LEVEL=DEBUG
+LOG_LEVEL=DEBUG
 ADVANCED_LOG_LEVEL=WARNING
 ```
 ### パッケージのインストール

@@ -13,25 +13,23 @@ from datetime import datetime
 from database import init_db
 from database.crud import get_session, addUserCount, clearVcSessions, addVcSessions, endVcSessions, readVcSummary, updateServerNotificationChannel, readServerSetting, FutureDateError
 
-init_db()
 load_dotenv()
 
-DISCORD_TOKEN = os.environ["DISCORD_TOKEN"]
-CHANNEL_ID = int(os.environ["CHANNEL_ID"])
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+CONSOLE_LEVEL_NAME = os.getenv("CONSOLE_LOG_LEVEL", "INFO").upper()
+FILE_LEVEL_NAME = os.getenv("FILE_LOG_LEVEL", "DEBUG").upper()
 LEVEL_NAME = os.getenv("LOG_LEVEL", "INFO").upper()
-LOG_LEVEL = getattr(logging, LEVEL_NAME, logging.INFO)
 ADVANCED_LEVEL_NAME = os.getenv("ADVANCED_LOG_LEVEL", "WARNING").upper()
+CONSOLE_LOG_LEVEL = getattr(logging, CONSOLE_LEVEL_NAME, logging.INFO)
+FILE_LOG_LEVEL = getattr(logging, FILE_LEVEL_NAME, logging.DEBUG)
+LOG_LEVEL = getattr(logging, LEVEL_NAME, logging.DEBUG)
 ADVANCED_LOG_LEVEL = getattr(logging, ADVANCED_LEVEL_NAME, logging.INFO)
 startup_time = int(time.time())
 
-with open("messages/memes.json", "r", encoding="utf-8") as f:
-    meme_dict = json.load(f)
-
-trigger_set = set(meme_dict.keys())
-
 # logging setting reset
 root = logging.getLogger()
-root.setLevel(LOG_LEVEL)
+root.setLevel(logging.DEBUG)
 root.handlers.clear()
 
 # logging setting
@@ -44,6 +42,7 @@ console_handler = RichHandler(
     markup=True,
     rich_tracebacks=True
 )
+console_handler.setLevel(CONSOLE_LOG_LEVEL)
 console_handler.setFormatter(logging.Formatter(LOG_CONSOLE_FMT, DATE_FMT))
 root.addHandler(console_handler)
 
@@ -54,6 +53,7 @@ file_handler = logging.handlers.RotatingFileHandler(
     maxBytes=32 * 1024 * 1024,
     backupCount=7,
 )
+file_handler.setLevel(FILE_LOG_LEVEL)
 file_handler.setFormatter(logging.Formatter(LOG_FILE_FMT, DATE_FMT))
 root.addHandler(file_handler)  
 
@@ -72,7 +72,17 @@ logging.getLogger('sqlalchemy.orm').setLevel(ADVANCED_LOG_LEVEL)
 logging.getLogger('sqlalchemy.pool').setLevel(ADVANCED_LOG_LEVEL)
 
 logger = logging.getLogger('vampire')
-logger.setLevel(LOG_LEVEL)
+
+# 初期準備
+if not DISCORD_TOKEN:
+    logger.critical("DISCORD_TOKEN is not set. The bot cannot start.")
+    raise ValueError("DISCORD_TOKEN is missing. Please set the environment variable.")
+
+init_db()
+with open("messages/memes.json", "r", encoding="utf-8") as f:
+    meme_dict = json.load(f)
+
+trigger_set = set(meme_dict.keys())
 
 # Discord
 intents = discord.Intents.default()
@@ -92,7 +102,17 @@ async def on_ready():
 
 @client.event
 async def on_message(message: discord.Message):
+    if message.author == client.user:
+        logger.debug("Ignore messages from ourselves.")
+        return
+
     if message.author.bot:
+        logger.debug("Ignore messages from bots.")
+        return
+    
+    permissions = message.channel.permissions_for(message.guild.me)
+    if not permissions.send_messages:
+        logger.debug("Missing Permissions.")
         return
 
     content = message.content.strip()
@@ -100,6 +120,7 @@ async def on_message(message: discord.Message):
     if content in trigger_set:
         responses = meme_dict[content]
         response = random.choice(responses)
+        logger.debug(f"Triggered meme response to '{content}' by {message.author} in {message.guild.name}")
         await message.channel.send(response)
 
     elif client.user in message.mentions:
@@ -110,6 +131,7 @@ async def on_message(message: discord.Message):
     description = 'pingを返します'
 )
 async def ping(interaction: discord.Interaction):
+    logger.debug(f"{interaction.user.id} executed /ping command in {interaction.guild.id}")
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     await interaction.response.send_message("pong!")
@@ -122,6 +144,7 @@ async def ping(interaction: discord.Interaction):
     channel="通知するチャンネル"
 )
 async def notificationChannel(interaction: discord.Integration, channel: discord.TextChannel):
+    logger.debug(f"{interaction.user.id} executed /notification-channel command in {interaction.guild.id}")
     with get_session() as session:
         updateServerNotificationChannel(session, interaction.guild.id, channel.id)
     await interaction.response.send_message(f"通知チャンネルを <#{channel.id}> に設定しました！")
@@ -142,6 +165,7 @@ async def vcLog(interaction: discord.Interaction, channel: discord.VoiceChannel,
     except FutureDateError:
         await interaction.response.send_message(f"ごめんね～\n私、未来のことはわかんないんだよね......\nその時まで一緒にいれると嬉しいな！", ephemeral=True)
         return
+    logger.debug(f"{interaction.user.id} queried vc-time for {channel.name}: Connection Time: {connection_time}, Mic Time: {mic_on_time}")
     if year is not None and month is None:
         await interaction.response.send_message(f"{year or datetime.now().year}年に {channel.name} に接続していた時間の発表です！\n接続時間: {connection_time}\nミュート: {mic_on_time}", ephemeral=ephemeral)
     else:
@@ -152,6 +176,7 @@ async def vcLog(interaction: discord.Interaction, channel: discord.VoiceChannel,
     description = 'じゃんけんをします。'
 )
 async def rps(interaction: discord.Interaction, ):
+    logger.debug(f"{interaction.user.id} executed /rps command in {interaction.guild.id}")
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     if random.randint(1, 100) == 1:
@@ -205,6 +230,7 @@ class rpsMeView(discord.ui.View):
     description = '私とじゃんけんをしよう！'
 )
 async def rpsMe(interaction: discord.Integration):
+    logger.debug(f"{interaction.user.id} executed /rps-me command in {interaction.guild.id}")
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     if random.randint(1, 250) == 1:
@@ -222,10 +248,11 @@ async def rpsMe(interaction: discord.Integration):
     side="サイコロの面の数です"
 )
 async def dice(interaction: discord.Interaction, roll: int, side: int):
+    logger.debug(f"{interaction.user.id} executed /dice command in {interaction.guild.id}")
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     if side is None or roll is None:
-        logger.ERROR(f'Not a valid parameter: roll: {roll} side: {side}')
+        logger.error(f'Not a valid parameter: roll: {roll} side: {side}')
         await interaction.response.send_message("必要なオプションがが指定されていません。",ephemeral=True)
     elif roll <= 0 or side <= 0:
         await interaction.response.send_message("オプションは0以上の整数だよ!",ephemeral=True)
@@ -241,8 +268,7 @@ async def dice(interaction: discord.Interaction, roll: int, side: int):
             msg = await asyncio.to_thread(calculate_roll)
             await interaction.followup.send(f"{msg}")
         except Exception as e:
-            logger.ERROR(f'Error in random calculation: roll: {roll} side: {side}')
-            logger.ERROR(f'Error occurred: {e}')
+            logger.exception(f'Error in random calculation: roll: {roll} side: {side}')
             await interaction.followup.send("わかんないよぅ；；\nbot管理者まで連絡ください。")
 
 @tree.command(
@@ -250,6 +276,7 @@ async def dice(interaction: discord.Interaction, roll: int, side: int):
     description = 'チンチロを振ります'
 )
 async def chinchiro(interaction: discord.Interaction):
+    logger.debug(f"{interaction.user.id} executed /chinchiro command in {interaction.guild.id}")
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     if random.randint(1, 50) == 1:
@@ -262,6 +289,7 @@ async def chinchiro(interaction: discord.Interaction):
     description = '一般的なダイスポーカーを振ります'
 )
 async def dicePoker(interaction: discord.Interaction):
+    logger.debug(f"{interaction.user.id} executed /dice-poker command in {interaction.guild.id}")
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     faces = ["9", "10", "J", "Q", "K", "A"]
@@ -272,6 +300,7 @@ async def dicePoker(interaction: discord.Interaction):
     description = 'ストグラのカジノで行われているダイスポーカーを振ります'
 )
 async def dicePokerStgr(interaction: discord.Integration):
+    logger.debug(f"{interaction.user.id} executed /dice-poker-stgr command in {interaction.guild.id}")
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     await interaction.response.send_message(f'{random.randint(1, 6)}  {random.randint(1, 6)}  {random.randint(1, 6)}  {random.randint(1, 6)}  {random.randint(1, 6)}')
@@ -313,10 +342,10 @@ async def on_voice_state_update(member, before, after):
                     addVcSessions(session, member.guild.id, member.id, after.channel.id, after.self_mute)
 
     if msg is not None:
-        logger.info(f'Send message: {msg}')
+        logger.debug(f'Send message: {msg}')
         await alert_channel.send(msg)
     else:
-        logger.debug("nope")
+        logger.debug("No relevant voice state changes detected.")
 
 tree.add_command(serverSettings)
 # log_level=logging.DEBUG
