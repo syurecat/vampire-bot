@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 import random
 import time
+import json
 import asyncio
 import logging
 import logging.handlers
@@ -22,6 +23,11 @@ LOG_LEVEL = getattr(logging, LEVEL_NAME, logging.INFO)
 ADVANCED_LEVEL_NAME = os.getenv("ADVANCED_LOG_LEVEL", "WARNING").upper()
 ADVANCED_LOG_LEVEL = getattr(logging, ADVANCED_LEVEL_NAME, logging.INFO)
 startup_time = int(time.time())
+
+with open("messages/memes.json", "r", encoding="utf-8") as f:
+    meme_dict = json.load(f)
+
+trigger_set = set(meme_dict.keys())
 
 # logging setting reset
 root = logging.getLogger()
@@ -83,6 +89,21 @@ async def on_ready():
     with get_session() as session:
         clearVcSessions(session)
     await tree.sync()
+
+@client.event
+async def on_message(message: discord.Message):
+    if message.author.bot:
+        return
+
+    content = message.content.strip()
+
+    if content in trigger_set:
+        responses = meme_dict[content]
+        response = random.choice(responses)
+        await message.channel.send(response)
+
+    elif client.user in message.mentions:
+        await message.channel.send(f"{message.author.mention} 呼んだ？")
 
 @tree.command(
     name = 'ping',
