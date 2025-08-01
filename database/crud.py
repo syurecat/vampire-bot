@@ -46,6 +46,7 @@ def checkExistsGuild(session: Session, guild_id: int):
     if guild is None:
         guild = Guild(guild_id=guild_id)
         session.add(guild)
+        session.flush()
         logger.info(f"Guild created with guild_id={guild_id}")
     else:
         logger.debug(f"Guild already exists with guild_id={guild_id}")
@@ -56,6 +57,7 @@ def checkExistsUser(session: Session, user_id: int):
     if user is None:
         user = User(user_id=user_id)
         session.add(user)
+        session.flush()
         logger.info(f"User created with user_id={user_id}")
     else:
         logger.debug(f"User already exists with user_id={user_id}")
@@ -69,6 +71,7 @@ def checkExistsGuildUser(session: Session, guild_id: int, user_id: int):
         join_date = int(time.time())
         guild_user = GuildUser(guild_id=guild_id, user_id=user_id, join_date=join_date)
         session.add(guild_user)
+        session.flush()
         logger.info(f"Guild user created with guild_user={guild_user}")
     else:
         logger.debug(f"Guild user already exists with guild_user={guild_user}")
@@ -79,6 +82,7 @@ def checkExistsVCSummary(session: Session, id: int, channel_id: int, year: int, 
     if vc_summary is None:
         vc_summary = VCSummary(id=id, channel_id=channel_id, year=year, month=month)
         session.add(vc_summary)
+        session.flush()
         logger.info(f"VCSummary created with vc_summary={vc_summary}")
     else:
         logger.debug(f"VCSummary already exists with vc_summary={vc_summary}")
@@ -102,7 +106,6 @@ def readServerSetting(session: Session, guild_id: int):
 
 def addUserCount(session: Session, user_id: int):
     checkExistsUser(session, user_id)
-    session.commit()
     user = session.query(User).filter_by(user_id=user_id).one()
     user.command_count += 1
     logger.debug(f"Updated command count for user_id={user_id} to {user.command_count}")
