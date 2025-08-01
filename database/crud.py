@@ -100,7 +100,6 @@ def updateServerNotificationChannel(session: Session, guild_id: int, notificatio
 def readServerSetting(session: Session, guild_id: int):
     checkExistsGuild(session, guild_id)
     guild = session.query(Guild).filter_by(guild_id=guild_id).one()
-    logger.debug(f"Read server setting for guild_id={guild_id}")
     return guild
 
 
@@ -136,7 +135,6 @@ def readVcSummary(session: Session, guild_id: int, user_id: int, channel_id: int
         vc_summary = session.query(VCSummary).filter_by(id=guild_user.id, channel_id=channel_id, year=year, month=month).one()
         connection_time = formatTime(vc_summary.total_connection_time)
         mic_on_time = formatTime(vc_summary.total_mic_on_time)
-    logger.debug(f"VC Summary: connection_time={connection_time}, mic_on_time={mic_on_time}")
     return connection_time, mic_on_time
 
 
@@ -153,7 +151,7 @@ def addVcSessions(session: Session, guild_id: int, user_id: int, channel_id: int
     vc_session = VCSession(id=guild_user.id, channel_id=channel_id, event_time=event_time, mic_on=mic_on)
     session.add(vc_session)
     session.commit()
-    logger.debug(f"Added VCSession: user_id={user_id}, guild_id={guild_id}, channel_id={channel_id}, mic_on={mic_on}")
+    logger.debug(f"Added VCSession: {vc_session}")
 
 
 def endVcSessions(session: Session, guild_id: int, user_id: int, channel_id: int, mic_on: bool, startup_time: int):
