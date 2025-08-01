@@ -6,19 +6,28 @@ from sqlalchemy.orm import relationship, sessionmaker
 
 Base = declarative_base()
 
-class Guild(Base):
+class ReprMixin:
+    def __repr__(self):
+        values = ', '.join(
+            f"{column.name}={getattr(self, column.name)}"
+            for column in self.__table__.columns
+        )
+        return f"<{self.__class__.__name__}({values})>"
+
+
+class Guild(ReprMixin, Base):
     __tablename__ = "guilds"
     guild_id = Column(Integer, primary_key=True)
     notification_channel = Column(Integer, nullable=True)
 
-class User(Base):
+class User(ReprMixin, Base):
     __tablename__ = "users"
     user_id = Column(Integer, primary_key=True)
     speaker_id = Column(Integer, default=1)
     command_count = Column(Integer, default=0)
     likeability = Column(Integer, default=0)
 
-class GuildUser(Base):
+class GuildUser(ReprMixin, Base):
     __tablename__ = "guild_users"
     id = Column(Integer, primary_key=True, autoincrement=True)
     guild_id = Column(Integer, ForeignKey("guilds.guild_id", ondelete="CASCADE"), nullable=False)
@@ -28,7 +37,7 @@ class GuildUser(Base):
         UniqueConstraint('guild_id', 'user_id', name='_guild_user_uc'),
     )
 
-class VCSummary(Base):
+class VCSummary(ReprMixin, Base):
     __tablename__ = "vc_summary"
     id = Column(Integer, ForeignKey("guild_users.id", ondelete="CASCADE"), nullable=False)
     channel_id = Column(Integer, nullable=False)
@@ -40,7 +49,7 @@ class VCSummary(Base):
         PrimaryKeyConstraint("id", "channel_id", "year", "month"),
     )
 
-class VCSession(Base):
+class VCSession(ReprMixin, Base):
     __tablename__ = "vc_sessions"
     id = Column(Integer, ForeignKey("guild_users.id", ondelete="CASCADE"), nullable=False)
     channel_id = Column(Integer, nullable=False)
