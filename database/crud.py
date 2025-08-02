@@ -18,7 +18,7 @@ def get_session():
         raise
     except Exception as e:
         session.rollback()
-        logger.error(f"datebase error: {e}")
+        logger.error(f"DateBase error: {e}")
         raise
     finally:
         session.close()
