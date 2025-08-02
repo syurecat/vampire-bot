@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from . import SessionLocal
 from .models import Guild, User, GuildUser, VCSummary, VCSession
@@ -123,9 +124,7 @@ def readVcSummary(session: Session, guild_id: int, user_id: int, channel_id: int
 
     guild_user = session.query(GuildUser).filter_by(guild_id=guild_id, user_id=user_id).one()
     if month is None and year is not None:
-        vc_summary = session.query(VCSummary).filter_by(id=guild_user.id, channel_id=channel_id, year=year).all()
-        total_connection_time = sum(s.total_connection_time for s in vc_summary)
-        total_mic_on_time = sum(s.total_mic_on_time for s in vc_summary)
+        total_connection_time, total_mic_on_time = session.query(func.coalesce(func.sum(VCSummary.total_connection_time), 0), func.coalesce(func.sum(VCSummary.total_mic_on_time), 0)).filter_by(id=guild_user.id, channel_id=channel_id, year=year).one()
         connection_time = formatTime(total_connection_time)
         mic_on_time = formatTime(total_mic_on_time)
     else:
