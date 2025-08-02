@@ -10,6 +10,7 @@ import logging
 import logging.handlers
 from rich.logging import RichHandler
 from datetime import datetime
+from version import VERSION
 from database import init_db
 from database.crud import get_session, addUserCount, clearVcSessions, addVcSessions, endVcSessions, readVcSummary, updateServerNotificationChannel, readServerSetting, FutureDateError
 
@@ -98,8 +99,13 @@ serverSettings = app_commands.Group(name="server-settings", description="サー�
 
 @client.event
 async def on_ready():
-    logger.info(f'We have logged in as {client.user}')
-    logger.debug("debug on")
+    logger.info(f"Bot is ready as {client.user} (ID: {client.user.id})")
+    logger.info(f"Connected to {len(client.guilds)} guild(s)")
+    logger.info(f"Version: {VERSION}")
+    logger.info(f"Startup Time: {datetime.fromtimestamp(startup_time)}")
+    logger.info(f"Log Levels - Console: {CONSOLE_LEVEL_NAME}, File: {FILE_LEVEL_NAME}, Event: {EVENT_LEVEL_NAME}")
+
+    logger.debug("Debug ON")
     with get_session() as session:
         clearVcSessions(session)
     await tree.sync()
