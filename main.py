@@ -111,6 +111,20 @@ async def on_ready():
     await tree.sync()
 
 @client.event
+async def on_guild_join(guild):
+    logger.info(f"Joined the guild {guild.name} id={guild.id}")
+    message = f"初めまして！{guild.name}の皆さん！\n{client.user.name}です！"
+    if guild.system_channel:
+        if guild.system_channel.permissions_for(guild.me).send_messages:
+            await guild.system_channel.send(message)
+            return
+
+    for channel in guild.text_channels:
+        if channel.permissions_for(guild.me).send_messages:
+            await channel.send(message)
+            return
+
+@client.event
 async def on_message(message: discord.Message):
     if message.author == client.user:
         return
