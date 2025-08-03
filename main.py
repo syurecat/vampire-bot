@@ -113,16 +113,13 @@ async def on_ready():
 @client.event
 async def on_message(message: discord.Message):
     if message.author == client.user:
-        logger.debug("Ignore messages from ourselves.")
         return
 
     if message.author.bot:
-        logger.debug("Ignore messages from bots.")
         return
     
     permissions = message.channel.permissions_for(message.guild.me)
     if not permissions.send_messages:
-        logger.debug("Missing Permissions.")
         return
 
     content = message.content.strip()
