@@ -95,7 +95,7 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 # Command Group
-serverSettings = app_commands.Group(name="server-settings", description="サーバー設定", default_permissions=discord.Permissions(manage_guild=True))
+serverSettings = app_commands.Group(name="server-settings", description="サーバー設定", guild_only=True, default_permissions=discord.Permissions(manage_guild=True))
 
 @client.event
 async def on_ready():
@@ -118,11 +118,18 @@ async def on_message(message: discord.Message):
     if message.author.bot:
         return
     
-    permissions = message.channel.permissions_for(message.guild.me)
-    if not permissions.send_messages:
-        return
+    if message.guild:
+        permissions = message.channel.permissions_for(message.guild.me)
+        if not permissions.send_messages:   
+            return
 
     content = message.content.strip()
+
+    if client.user in message.mentions:
+        await message.channel.send(f"{message.author.mention} 呼んだ？")
+
+    if isinstance(message.channel, discord.DMChannel):
+        return
 
     if content in trigger_set:
         responses = meme_dict[content]
@@ -130,15 +137,13 @@ async def on_message(message: discord.Message):
         logger.debug(f"Triggered meme response to '{content}' by {message.author} in {message.guild.name}")
         await message.channel.send(response)
 
-    elif client.user in message.mentions:
-        await message.channel.send(f"{message.author.mention} 呼んだ？")
 
 @tree.command(
     name = 'ping',
     description = 'pingを返します'
 )
 async def ping(interaction: discord.Interaction):
-    logger.debug(f"{interaction.user.id} executed /ping command in {interaction.guild.id}")
+    logger.debug(f"{interaction.user.id} executed /ping command in {f"guild id={interaction.guild.id}" if interaction.guild else f"{interaction.channel.type.name} id={interaction.channel.id}"}")
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     await interaction.response.send_message("pong!")
@@ -151,7 +156,7 @@ async def ping(interaction: discord.Interaction):
     channel="通知するチャンネル"
 )
 async def notificationChannel(interaction: discord.Integration, channel: discord.TextChannel):
-    logger.debug(f"{interaction.user.id} executed /notification-channel command in {interaction.guild.id}")
+    logger.debug(f"{interaction.user.id} executed /notification-channel command in {f"guild id={interaction.guild.id}" if interaction.guild else f"{interaction.channel.type.name} id={interaction.channel.id}"}")
     with get_session() as session:
         updateServerNotificationChannel(session, interaction.guild.id, channel.id)
     await interaction.response.send_message(f"通知チャンネルを <#{channel.id}> に設定しました！")
@@ -161,6 +166,7 @@ async def notificationChannel(interaction: discord.Integration, channel: discord
         name= 'vc-time',
         description= 'あなたのvc接続時間を表示します。'
 )
+@app_commands.guild_only()
 @app_commands.describe(
     channel="閲覧するチャンネル",
     ephemeral="自分にしか表示しないかどうかです。defaultでTrueです。"
@@ -183,7 +189,7 @@ async def vcLog(interaction: discord.Interaction, channel: discord.VoiceChannel,
     description = 'じゃんけんをします。'
 )
 async def rps(interaction: discord.Interaction, ):
-    logger.debug(f"{interaction.user.id} executed /rps command in {interaction.guild.id}")
+    logger.debug(f"{interaction.user.id} executed /rps command in {f"guild id={interaction.guild.id}" if interaction.guild else f"{interaction.channel.type.name} id={interaction.channel.id}"}")
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     if random.randint(1, 100) == 1:
@@ -237,7 +243,7 @@ class rpsMeView(discord.ui.View):
     description = '私とじゃんけんをしよう！'
 )
 async def rpsMe(interaction: discord.Integration):
-    logger.debug(f"{interaction.user.id} executed /rps-me command in {interaction.guild.id}")
+    logger.debug(f"{interaction.user.id} executed /rps-me command in {f"guild id={interaction.guild.id}" if interaction.guild else f"{interaction.channel.type.name} id={interaction.channel.id}"}")
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     if random.randint(1, 250) == 1:
@@ -255,7 +261,7 @@ async def rpsMe(interaction: discord.Integration):
     side="サイコロの面の数です"
 )
 async def dice(interaction: discord.Interaction, roll: int, side: int):
-    logger.debug(f"{interaction.user.id} executed /dice command in {interaction.guild.id}")
+    logger.debug(f"{interaction.user.id} executed /dice command in {f"guild id={interaction.guild.id}" if interaction.guild else f"{interaction.channel.type.name} id={interaction.channel.id}"}")
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     if side is None or roll is None:
@@ -283,7 +289,7 @@ async def dice(interaction: discord.Interaction, roll: int, side: int):
     description = 'チンチロを振ります'
 )
 async def chinchiro(interaction: discord.Interaction):
-    logger.debug(f"{interaction.user.id} executed /chinchiro command in {interaction.guild.id}")
+    logger.debug(f"{interaction.user.id} executed /chinchiro command in {f"guild id={interaction.guild.id}" if interaction.guild else f"{interaction.channel.type.name} id={interaction.channel.id}"}")
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     if random.randint(1, 50) == 1:
@@ -296,7 +302,7 @@ async def chinchiro(interaction: discord.Interaction):
     description = '一般的なダイスポーカーを振ります'
 )
 async def dicePoker(interaction: discord.Interaction):
-    logger.debug(f"{interaction.user.id} executed /dice-poker command in {interaction.guild.id}")
+    logger.debug(f"{interaction.user.id} executed /dice-poker command in {f"guild id={interaction.guild.id}" if interaction.guild else f"{interaction.channel.type.name} id={interaction.channel.id}"}")
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     faces = ["9", "10", "J", "Q", "K", "A"]
@@ -307,7 +313,7 @@ async def dicePoker(interaction: discord.Interaction):
     description = 'ストグラのカジノで行われているダイスポーカーを振ります'
 )
 async def dicePokerStgr(interaction: discord.Integration):
-    logger.debug(f"{interaction.user.id} executed /dice-poker-stgr command in {interaction.guild.id}")
+    logger.debug(f"{interaction.user.id} executed /dice-poker-stgr command in {f"guild id={interaction.guild.id}" if interaction.guild else f"{interaction.channel.type.name} id={interaction.channel.id}"}")
     with get_session() as session:
         addUserCount(session, interaction.user.id)
     await interaction.response.send_message(f'{random.randint(1, 6)}  {random.randint(1, 6)}  {random.randint(1, 6)}  {random.randint(1, 6)}  {random.randint(1, 6)}')
