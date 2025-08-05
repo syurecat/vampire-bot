@@ -228,7 +228,7 @@ async def vc_rank(interaction: discord.Integration, channel: discord.VoiceChanne
     else:
         lines.append(f"データなし")
     if not user_nodata:
-        lines.append(f"{user_rank.rank}位 {name} | 接続: {user_rank.total_connection_time} | マイク: {user_rank.total_mic_on_time}")
+        lines.append(f"{user_rank.rank}位 {interaction.user.display_name} | 接続: {user_rank.total_connection_time} | マイク: {user_rank.total_mic_on_time}")
 
     await interaction.followup.send("\n".join(lines))
 
