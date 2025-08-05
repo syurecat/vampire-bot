@@ -85,6 +85,9 @@ Botと直接じゃんけんをプレイ。ボタン式で選択できます。
 `/vc-time channel:VoiceChannel year:int month:int ephemeral:bool`
 過去のVC接続時間とミュート状態の統計を確認できます。
 
+`/vc-rank channel:VoiceChannel year:int month:int ephemeral:bool`
+過去のVC接続時間とミュート状態の統計を他のユーザーと比較できます。
+
 ### サーバー設定系（管理者権限）
 
 `/server-settings notification-channel channel:TextChannel`
