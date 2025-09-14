@@ -31,6 +31,7 @@ LOG_LEVEL = getattr(logging, LEVEL_NAME, logging.DEBUG)
 ADVANCED_LOG_LEVEL = getattr(logging, ADVANCED_LEVEL_NAME, logging.INFO)
 EVENT_LOG_LEVEL = getattr(logging, EVENT_LEVEL_NAME, logging.INFO)
 startup_time = int(time.time())
+memes_enabled = True
 
 # logging setting reset
 root = logging.getLogger()
@@ -89,8 +90,18 @@ if not DISCORD_TOKEN:
     raise ValueError("DISCORD_TOKEN is missing. Please set the environment variable.")
 
 init_db()
-with open("messages/memes.json", "r", encoding="utf-8") as f:
-    meme_dict = json.load(f)
+try:
+    with open("messages/memes.json", "r", encoding="utf-8") as f:
+        meme_dict = json.load(f)
+except FileNotFoundError:
+    logger.warning("memes.json not found. Meme feature disabled.")
+    memes_enabled = False
+except json.JSONDecodeError:
+    logger.warning("memes.json is invalid. Check JSON format. Meme feature disabled.")
+    memes_enabled = False
+except Exception as e:
+    logger.warning(f"Unexpected error loading memes.json: {e}. Meme feature disabled.")
+    memes_enabled = False
 
 trigger_set = set(meme_dict.keys())
 
@@ -146,6 +157,9 @@ async def on_message(message: discord.Message):
         await message.channel.send(f"{message.author.mention} 呼んだ？")
 
     if isinstance(message.channel, discord.DMChannel):
+        return
+    
+    if not memes_enabled:
         return
 
     if content in trigger_set:
@@ -436,8 +450,6 @@ async def on_voice_state_update(member, before, after):
         logger.debug("No relevant voice state changes detected.")
 
 tree.add_command(serverSettings)
-# log_level=logging.DEBUG
-# client.run(DISCORD_TOKEN, log_handler=None)
 
 async def shutdown():
     logger.info("Start Shutdown")
