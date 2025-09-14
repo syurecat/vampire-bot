@@ -5,6 +5,7 @@ import os
 import random
 import time
 import json
+import signal
 import asyncio
 import logging
 import logging.handlers
@@ -78,6 +79,9 @@ logging.getLogger('sqlalchemy.orm').setLevel(ADVANCED_LOG_LEVEL)
 logging.getLogger('sqlalchemy.pool').setLevel(ADVANCED_LOG_LEVEL)
 
 logger = logging.getLogger('vampire')
+logger.info(f"Logging start")
+logger.info(f"Log Levels - Console: {CONSOLE_LEVEL_NAME}, File: {FILE_LEVEL_NAME}, Event: {EVENT_LEVEL_NAME}")
+logger.info(f"Version: {VERSION}")
 
 # 初期準備
 if not DISCORD_TOKEN:
@@ -102,9 +106,7 @@ serverSettings = app_commands.Group(name="server-settings", description="サー�
 async def on_ready():
     logger.info(f"Bot is ready as {client.user} (ID: {client.user.id})")
     logger.info(f"Connected to {len(client.guilds)} guild(s)")
-    logger.info(f"Version: {VERSION}")
     logger.info(f"Startup Time: {datetime.fromtimestamp(startup_time)}")
-    logger.info(f"Log Levels - Console: {CONSOLE_LEVEL_NAME}, File: {FILE_LEVEL_NAME}, Event: {EVENT_LEVEL_NAME}")
 
     logger.debug("Debug ON")
     with get_session() as session:
@@ -435,4 +437,25 @@ async def on_voice_state_update(member, before, after):
 
 tree.add_command(serverSettings)
 # log_level=logging.DEBUG
-client.run(DISCORD_TOKEN, log_handler=None)
+# client.run(DISCORD_TOKEN, log_handler=None)
+
+async def shutdown():
+    logger.info("Start Shutdown")
+    with get_session() as session:
+        crud.endAllVcSessions(session, startup_time)
+    await client.close()
+    logger.info("Finish Shutdown! good by!")
+
+async def runner(token):
+
+
+    async with client:
+        try:
+            await client.start(token)
+        except (KeyboardInterrupt, asyncio.CancelledError):
+            logger.info("Received stop signal")
+        finally:
+            await shutdown()
+
+if __name__ == "__main__":
+    asyncio.run(runner(DISCORD_TOKEN))

@@ -302,3 +302,9 @@ def endVcSessions(session: Session, guild_id: int, user_id: int, channel_id: int
     else:
         logger.error(f'Integrity violation argument: {mic_on} db: {mic_on_session}')
     session.commit()
+
+def endAllVcSessions(session: Session, startup_time: int):
+    allSession = session.query(VCSession).all()
+    for s in allSession:
+        guild_user = session.query(GuildUser).filter_by(id = s.id).one()
+        endVcSessions(session, guild_user.guild_id, guild_user.user_id, s.channel_id, s.mic_on, startup_time)
