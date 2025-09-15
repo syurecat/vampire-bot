@@ -5,7 +5,8 @@ import os
 import random
 import time
 import json
-import signal
+import uuid
+import traceback
 import asyncio
 import logging
 import logging.handlers
@@ -54,7 +55,7 @@ root.addHandler(console_handler)
 
 # log file
 file_handler = logging.handlers.RotatingFileHandler(
-    filename='discord.log',
+    filename='log/vampire.log',
     encoding='utf-8',
     maxBytes=32 * 1024 * 1024,
     backupCount=7,
@@ -62,6 +63,14 @@ file_handler = logging.handlers.RotatingFileHandler(
 file_handler.setLevel(FILE_LOG_LEVEL)
 file_handler.setFormatter(logging.Formatter(LOG_FILE_FMT, DATE_FMT))
 root.addHandler(file_handler)  
+
+error_handler = logging.handlers.RotatingFileHandler(
+    filename='log/error.log',
+    encoding='utf-8',
+)
+error_handler.setLevel(logging.ERROR)
+error_handler.setFormatter(logging.Formatter(LOG_FILE_FMT, DATE_FMT))
+root.addHandler(error_handler)
 
 # Discord log setting
 discord_logger = logging.getLogger('discord')
@@ -85,6 +94,12 @@ logger.info(f"Log Levels - Console: {CONSOLE_LEVEL_NAME}, File: {FILE_LEVEL_NAME
 logger.info(f"Version: {VERSION}")
 
 # 初期準備
+def log_error(error: Exception, context: str = "") -> str:
+    error_code = f"E-{uuid.uuid4()}"
+    tb = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+    logger.error(f"{error_code} | {context}\n{tb}")
+    return error_code
+
 if not DISCORD_TOKEN:
     logger.critical("DISCORD_TOKEN is not set. The bot cannot start.")
     raise ValueError("DISCORD_TOKEN is missing. Please set the environment variable.")
@@ -167,6 +182,13 @@ async def on_message(message: discord.Message):
         response = random.choice(responses)
         logger.debug(f"Triggered meme response to '{content}' by {message.author} in {message.guild.name}")
         await message.channel.send(response)
+
+
+@tree.error
+async def on_app_command_error(interaction: discord.Interaction, error):
+    error_code = log_error(error, f"user={interaction.user} command={interaction.command}")
+    if not interaction.response.is_done():
+        await interaction.response.send_message(f"予期しないエラーが発生しました (エラーコード: `{error_code}`)", ephemeral=True)
 
 
 async def ping(interaction: discord.Interaction):
